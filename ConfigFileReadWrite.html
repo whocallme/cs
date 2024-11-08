@@ -1,0 +1,80 @@
+/*
+AppConfig Read and Write
+using singleton pattern
+*/
+
+using System;
+using System.Configuration;
+
+namespace MyProject.Common.AppConfigManager
+{
+    public class AppConfigManager : IDisposable
+    {
+        private static readonly Lazy<AppConfigManager> instance = new Lazy<AppConfigManager>(() => new AppConfigManager());
+        private bool disposedValue;
+
+        public static AppConfigManager Instance
+        {
+            get
+            {
+                return instance.Value;
+            }
+        }
+
+        private AppConfigManager()
+        {
+        }
+
+		/// <summary>
+		/// Set Config' Value
+		/// </summary>
+		/// <param name="key">key</param>
+		/// <param name="value">value</param>
+		/// <returns>void</returns>
+        public void SetConfigValue(string key, string value)
+        {
+            Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+
+            if (config.AppSettings.Settings[key] != null)
+            {
+                config.AppSettings.Settings[key].Value = value;
+            }
+            else
+            {
+                config.AppSettings.Settings.Add(key, value);
+            }
+
+            // save and refresh section
+            config.Save(ConfigurationSaveMode.Modified);
+            ConfigurationManager.RefreshSection("appSettings");
+        }
+
+		/// <summary>
+		/// Get Config' Value
+		/// </summary>
+		/// <param name="key">key</param>
+		/// <returns>string</returns>
+        public string GetConfigValue(string key)
+        {
+            return System.Configuration.ConfigurationManager.AppSettings[key];
+        }
+
+        #region IDisposable Support
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                }
+                disposedValue = true;
+            }
+        }
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+        #endregion
+    }
+}
