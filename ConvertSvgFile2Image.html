@@ -1,0 +1,95 @@
+using SharpVectors.Converters;
+using SharpVectors.Renderers.Wpf;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
+using System.Windows.Media;
+using System.Windows;
+using System.Windows.Controls;
+using System.Security.Cryptography.X509Certificates;  // WPF의 Image 컨트롤을 사용하기 위해 추가
+
+namespace MyProject.Common
+{
+    internal class VectorReder
+    {
+        // image format
+        public enum ImageFormat
+        {
+            Png,
+            Jpeg
+        }
+
+        // SVG file -> image file
+        public void ConvertSvgFileToImage(string svgFilePath, string outputFilePath, ImageFormat format)
+        {
+            try
+            {
+                // SVG 파일이 존재하는지 확인
+                if (!File.Exists(svgFilePath))
+                {
+                    MessageBox.Show("SVG 파일이 존재하지 않습니다.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // SVG file -> DrawingGroup
+                var settings = new WpfDrawingSettings();
+                var svgReader = new FileSvgReader(settings);
+                DrawingGroup drawing = svgReader.Read(svgFilePath);
+
+                // size check
+                double originalWidth = drawing.Bounds.Width;
+                double originalHeight = drawing.Bounds.Height;
+
+                // resize
+                double scaleFactor = 2.0;
+                int targetWidth = (int)(originalWidth * scaleFactor);
+                int targetHeight = (int)(originalHeight * scaleFactor);
+
+                targetWidth = Math.Max(500, targetWidth);
+                targetHeight = Math.Max(500, targetHeight);
+
+                // convert to DrawingImage
+                DrawingImage drawingImage = new DrawingImage(drawing);
+
+                // Image control rendering
+                Image imageControl = new Image
+                {
+                    Source = drawingImage,
+                    Width = targetWidth,
+                    Height = targetHeight,
+                    Stretch = Stretch.Uniform
+                };
+
+                // bitmap capture
+                RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
+                    targetWidth, targetHeight, 96, 96, PixelFormats.Pbgra32);
+
+                imageControl.Measure(new Size(targetWidth, targetHeight));
+                imageControl.Arrange(new Rect(new Size(targetWidth, targetHeight)));
+
+                // image captrue
+                renderBitmap.Render(imageControl);
+
+                // save image file
+                BitmapEncoder encoder = format == ImageFormat.Jpeg ? (BitmapEncoder)new JpegBitmapEncoder() : new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(renderBitmap));
+
+                using (FileStream fileStream = new FileStream(outputFilePath, FileMode.Create))
+                {
+                    encoder.Save(fileStream);
+                }
+
+                MessageBox.Show($"{outputFilePath}로 이미지가 저장되었습니다.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"이미지를 저장하는 중 오류가 발생했습니다: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    }
+    
+}
